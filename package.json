@@ -1,0 +1,57 @@
+{
+  "name": "saathi-desktop",
+  "version": "0.1.0",
+  "description": "Windows desktop shell for the Saathi Record Meeting feature",
+  "private": true,
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --publish never",
+    "publish": "electron-builder --win --publish always"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.4"
+  },
+  "devDependencies": {
+    "electron": "^32.0.0",
+    "electron-builder": "^25.0.5"
+  },
+  "build": {
+    "appId": "ai.buildzo.saathidesktop",
+    "productName": "Saathi Recorder",
+    "asar": true,
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Saathi Recorder"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "buildzoai",
+        "repo": "saathi-desktop"
+      }
+    ]
+  }
+}
