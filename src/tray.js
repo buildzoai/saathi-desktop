@@ -2,7 +2,7 @@
 // menu. Deliberately no renderer settings screen for v1.
 const { Tray, Menu, app, nativeImage } = require("electron");
 const path = require("path");
-const { getEnv, setEnv } = require("./config");
+const { getEnv, setEnv, ENV_URLS, ENV_LABELS } = require("./config");
 const { showMainWindow } = require("./windowManager");
 
 let tray = null;
@@ -27,11 +27,14 @@ function buildMenuTemplate() {
     { label: "Check for Updates Now", click: () => checkForUpdatesNow() },
     {
       label: "Environment",
-      submenu: [
-        { label: "Production", type: "radio", checked: env === "prod", click: () => switchEnv("prod") },
-        { label: "Development", type: "radio", checked: env === "dev", click: () => switchEnv("dev") },
-        { label: "Local (localhost:8080)", type: "radio", checked: env === "local", click: () => switchEnv("local") },
-      ],
+      // Built from config's ENV_URLS so a new dev slot only has to be added
+      // there, not in two places that can drift apart.
+      submenu: Object.keys(ENV_URLS).map((key) => ({
+        label: ENV_LABELS[key] || key,
+        type: "radio",
+        checked: env === key,
+        click: () => switchEnv(key),
+      })),
     },
   ];
 

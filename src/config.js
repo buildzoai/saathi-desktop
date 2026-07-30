@@ -7,10 +7,30 @@ const fs = require("fs");
 const path = require("path");
 const { app } = require("electron");
 
+// The dev box hosts SIX independent slots (dev, dev1..dev5), each a separate
+// checkout + backend + database, so "the dev server" is never one thing —
+// whichever slot your branch is deployed to is the one you need to point at.
+// Listing them all beats editing this file every time a branch moves slots.
 const ENV_URLS = {
   prod: "https://data.mygenieprojects.com",
   dev: "https://dev.buildzo.ai",
+  dev1: "https://dev1.buildzo.ai",
+  dev2: "https://dev2.buildzo.ai",
+  dev3: "https://dev3.buildzo.ai",
+  dev4: "https://dev4.buildzo.ai",
+  dev5: "https://dev5.buildzo.ai",
   local: "http://localhost:8080",
+};
+
+const ENV_LABELS = {
+  prod: "Production",
+  dev: "Development (dev)",
+  dev1: "Development (dev1)",
+  dev2: "Development (dev2)",
+  dev3: "Development (dev3)",
+  dev4: "Development (dev4)",
+  dev5: "Development (dev5)",
+  local: "Local (localhost:8080)",
 };
 
 const RECORD_MEETING_PATH = "/saathi/record-meeting";
@@ -36,13 +56,16 @@ function writeConfig(data) {
   }
 }
 
+// Validated against ENV_URLS rather than a hand-listed set, so adding a slot
+// above is the only edit needed. Anything unrecognised (including a config
+// written by an older build that knew fewer names) falls back to prod.
 function getEnv() {
   const env = readConfig().env;
-  return env === "dev" || env === "local" ? env : "prod";
+  return Object.prototype.hasOwnProperty.call(ENV_URLS, env) ? env : "prod";
 }
 
 function setEnv(env) {
-  const normalized = env === "dev" || env === "local" ? env : "prod";
+  const normalized = Object.prototype.hasOwnProperty.call(ENV_URLS, env) ? env : "prod";
   writeConfig({ ...readConfig(), env: normalized });
 }
 
@@ -75,4 +98,6 @@ module.exports = {
   RECORD_MEETING_PATH,
   getWidgetPosition,
   setWidgetPosition,
+  ENV_URLS,
+  ENV_LABELS,
 };
