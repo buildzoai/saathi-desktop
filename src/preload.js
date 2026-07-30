@@ -1,3 +1,15 @@
-// preload.js — intentionally empty. The window loads the real portal-ui
-// page as-is (no IPC bridge needed for v1); contextIsolation stays on and
-// nodeIntegration off so the loaded web content never gets Node access.
+// preload.js — a minimal, explicit bridge from the loaded portal-ui page to
+// the Electron shell. contextIsolation stays on; nodeIntegration stays off —
+// the page can only call the exact function below, never reach into
+// Node/Electron internals directly.
+const { contextBridge, ipcRenderer } = require("electron");
+
+contextBridge.exposeInMainWorld("saathiDesktop", {
+  // Called by SaathiRecordingContext.tsx whenever recording status/elapsed
+  // time changes, so the floating "recording in progress" widget window
+  // (widgetWindow.js) can stay in sync even while the main window is
+  // minimized or hidden to tray.
+  reportRecordingStatus: (status, elapsedMs) => {
+    ipcRenderer.send("recording-status", { status, elapsedMs });
+  },
+});

@@ -10,6 +10,7 @@ const { app } = require("electron");
 const ENV_URLS = {
   prod: "https://data.mygenieprojects.com",
   dev: "https://dev.buildzo.ai",
+  local: "http://localhost:8080",
 };
 
 const RECORD_MEETING_PATH = "/saathi/record-meeting";
@@ -36,11 +37,13 @@ function writeConfig(data) {
 }
 
 function getEnv() {
-  return readConfig().env === "dev" ? "dev" : "prod";
+  const env = readConfig().env;
+  return env === "dev" || env === "local" ? env : "prod";
 }
 
 function setEnv(env) {
-  writeConfig({ ...readConfig(), env: env === "dev" ? "dev" : "prod" });
+  const normalized = env === "dev" || env === "local" ? env : "prod";
+  writeConfig({ ...readConfig(), env: normalized });
 }
 
 function getBaseUrl() {
@@ -51,4 +54,25 @@ function getRecordMeetingUrl() {
   return `${getBaseUrl()}${RECORD_MEETING_PATH}?kiosk=1`;
 }
 
-module.exports = { getEnv, setEnv, getBaseUrl, getRecordMeetingUrl, RECORD_MEETING_PATH };
+// Last user-dragged position of the floating "recording in progress" widget
+// — null until the user has actually moved it once, so a fresh install falls
+// back to windowManager.js's own default corner placement.
+function getWidgetPosition() {
+  const pos = readConfig().widgetPosition;
+  if (pos && typeof pos.x === "number" && typeof pos.y === "number") return pos;
+  return null;
+}
+
+function setWidgetPosition(pos) {
+  writeConfig({ ...readConfig(), widgetPosition: { x: pos.x, y: pos.y } });
+}
+
+module.exports = {
+  getEnv,
+  setEnv,
+  getBaseUrl,
+  getRecordMeetingUrl,
+  RECORD_MEETING_PATH,
+  getWidgetPosition,
+  setWidgetPosition,
+};

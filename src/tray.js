@@ -30,6 +30,7 @@ function buildMenuTemplate() {
       submenu: [
         { label: "Production", type: "radio", checked: env === "prod", click: () => switchEnv("prod") },
         { label: "Development", type: "radio", checked: env === "dev", click: () => switchEnv("dev") },
+        { label: "Local (localhost:8080)", type: "radio", checked: env === "local", click: () => switchEnv("local") },
       ],
     },
   ];

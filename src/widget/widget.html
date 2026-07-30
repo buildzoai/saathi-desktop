@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  html, body {
+    margin: 0; padding: 0; width: 100%; height: 100%;
+    background: transparent;
+    overflow: hidden;
+    font-family: -apple-system, "Segoe UI", sans-serif;
+    user-select: none;
+  }
+  .pill {
+    width: 100%; height: 100%;
+    box-sizing: border-box;
+    background: #1b1b1f;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 14px;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  }
+  .iconWrap {
+    position: relative;
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+  }
+  .iconWrap img {
+    width: 100%;
+    height: 100%;
+    border-radius: 7px;
+    display: block;
+  }
+  .badge {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #ff4d4f;
+    border: 2px solid #1b1b1f;
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  .paused .badge { animation: none; background: #9a9a9a; }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+  }
+  .timer {
+    color: #e8e8ea;
+    font-size: 13px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+  <div class="pill" id="pill">
+    <span class="iconWrap">
+      <img src="icon.png" alt="" draggable="false" />
+      <span class="badge" id="badge"></span>
+    </span>
+    <span class="timer" id="timer">00:00</span>
+  </div>
+  <script>
+    const pillEl = document.getElementById("pill");
+    const timerEl = document.getElementById("timer");
+    const badgeEl = document.getElementById("badge");
+
+    function fmt(ms) {
+      const t = Math.max(0, Math.floor(ms / 1000));
+      const m = String(Math.floor(t / 60)).padStart(2, "0");
+      const s = String(t % 60).padStart(2, "0");
+      return `${m}:${s}`;
+    }
+
+    window.widgetBridge.onStatusUpdate(({ status, elapsedMs }) => {
+      timerEl.textContent = fmt(elapsedMs);
+      pillEl.classList.toggle("paused", status === "paused");
+    });
+
+    // Manual drag + click detection instead of -webkit-app-region: drag —
+    // Chromium doesn't reliably fire a "click" event on a native drag region
+    // (the OS can swallow it as a cancelled drag even with zero movement),
+    // which is why the widget was unclickable. Tracking the gesture by hand
+    // lets both behaviors coexist: a real click (near-zero movement) opens
+    // the main window, anything past a small threshold repositions it.
+    const DRAG_THRESHOLD_PX = 4;
+    let dragging = false;
+    let movedPastThreshold = false;
+    let startX = 0;
+    let startY = 0;
+
+    pillEl.addEventListener("mousedown", (e) => {
+      dragging = true;
+      movedPastThreshold = false;
+      startX = e.screenX;
+      startY = e.screenY;
+      window.widgetBridge.dragStart();
+    });
+
+    window.addEventListener("mousemove", (e) => {
+      if (!dragging) return;
+      const dx = e.screenX - startX;
+      const dy = e.screenY - startY;
+      if (Math.abs(dx) > DRAG_THRESHOLD_PX || Math.abs(dy) > DRAG_THRESHOLD_PX) {
+        movedPastThreshold = true;
+      }
+      window.widgetBridge.dragMove(dx, dy);
+    });
+
+    window.addEventListener("mouseup", () => {
+      if (!dragging) return;
+      dragging = false;
+      if (movedPastThreshold) {
+        window.widgetBridge.dragEnd();
+      } else {
+        window.widgetBridge.notifyClicked();
+      }
+    });
+  </script>
+</body>
+</html>
