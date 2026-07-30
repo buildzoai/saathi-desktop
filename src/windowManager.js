@@ -21,12 +21,14 @@ function isAllowedOrigin(url) {
 function createMainWindow({ startHidden } = {}) {
   const ses = session.fromPartition(SESSION_PARTITION);
 
-  // getUserMedia is denied by default in Electron (unlike a real browser,
-  // which prompts) — without these handlers, recording fails silently.
+  // getUserMedia and Notification are both denied by default in Electron
+  // (unlike a real browser, which prompts) — without these handlers,
+  // recording and the pre-meeting desktop notification both fail silently.
+  const isAllowedPermission = (permission) => permission === "media" || permission === "notifications";
   ses.setPermissionRequestHandler((_wc, permission, callback) => {
-    callback(permission === "media");
+    callback(isAllowedPermission(permission));
   });
-  ses.setPermissionCheckHandler((_wc, permission) => permission === "media");
+  ses.setPermissionCheckHandler((_wc, permission) => isAllowedPermission(permission));
 
   mainWindow = new BrowserWindow({
     width: 1280,
