@@ -1,20 +1,25 @@
 {
   "name": "saathi-desktop",
   "version": "0.2.0",
-  "description": "Windows desktop shell for the Saathi Record Meeting feature",
+  "description": "Desktop shell (Windows + macOS) for MyGenie Notes and Saathi Record Meeting",
   "private": true,
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
+    "selftest": "electron selftest/main.js",
     "dist": "electron-builder --win --publish never",
-    "publish": "electron-builder --win --publish always"
+    "dist:mac": "electron-builder --mac --publish never",
+    "dist:mac:unsigned": "CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dir --publish never -c.mac.identity=null",
+    "publish": "electron-builder --win --publish always",
+    "publish:mac": "electron-builder --mac --publish always",
+    "tray-icon": "node scripts/make-tray-icon.js"
   },
   "dependencies": {
-    "electron-updater": "^6.3.4"
+    "electron-updater": "^6.8.9"
   },
   "devDependencies": {
-    "electron": "^32.0.0",
-    "electron-builder": "^25.0.5"
+    "electron": "^44.9.0",
+    "electron-builder": "^26.15.3"
   },
   "build": {
     "appId": "ai.buildzo.saathidesktop",
@@ -45,6 +50,37 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Saathi Recorder"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "category": "public.app-category.productivity",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.inherit.plist",
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Notes records your microphone so it can write up your meetings.",
+        "NSAudioCaptureUsageDescription": "Notes records the call's audio so it can transcribe what others say.",
+        "NSCameraUsageDescription": "Record Meeting uses the camera when you take a photo during a meeting."
+      }
+    },
+    "dmg": {
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
     },
     "publish": [
       {
