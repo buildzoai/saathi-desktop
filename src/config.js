@@ -12,7 +12,8 @@ const { app } = require("electron");
 // whichever slot your branch is deployed to is the one you need to point at.
 // Listing them all beats editing this file every time a branch moves slots.
 const ENV_URLS = {
-  prod: "https://data.mygenieprojects.com",
+  // data.mygenieprojects.com now 301-redirects here (checked 19 Oct 2026).
+  prod: "https://os.buildzo.ai",
   dev: "https://dev.buildzo.ai",
   dev1: "https://dev1.buildzo.ai",
   dev2: "https://dev2.buildzo.ai",
@@ -20,6 +21,12 @@ const ENV_URLS = {
   dev4: "https://dev4.buildzo.ai",
   dev5: "https://dev5.buildzo.ai",
   local: "http://localhost:8080",
+};
+
+// Other origins that serve the same environment (old hostnames that redirect
+// to the canonical one). Treated as "our own" for navigation and permissions.
+const ENV_ALIASES = {
+  prod: ["https://data.mygenieprojects.com"],
 };
 
 const ENV_LABELS = {
@@ -34,6 +41,8 @@ const ENV_LABELS = {
 };
 
 const RECORD_MEETING_PATH = "/saathi/record-meeting";
+// Default start page: the MyGenie Notes list (portal-ui route /notes).
+const NOTES_PATH = "/notes";
 
 function configPath() {
   return path.join(app.getPath("userData"), "config.json");
@@ -73,8 +82,20 @@ function getBaseUrl() {
   return ENV_URLS[getEnv()];
 }
 
+// Every origin the active environment's pages may load from. Used by the
+// navigation lock-down (windowManager.js) and by capture.js, so mic, camera,
+// display capture and the onboarding IPC are granted to these origins only.
+function getAllowedOrigins() {
+  const env = getEnv();
+  return [ENV_URLS[env], ...(ENV_ALIASES[env] || [])].map((u) => new URL(u).origin);
+}
+
 function getRecordMeetingUrl() {
   return `${getBaseUrl()}${RECORD_MEETING_PATH}?kiosk=1`;
+}
+
+function getNotesUrl() {
+  return `${getBaseUrl()}${NOTES_PATH}`;
 }
 
 // Last user-dragged position of the floating "recording in progress" widget
@@ -94,8 +115,11 @@ module.exports = {
   getEnv,
   setEnv,
   getBaseUrl,
+  getAllowedOrigins,
   getRecordMeetingUrl,
+  getNotesUrl,
   RECORD_MEETING_PATH,
+  NOTES_PATH,
   getWidgetPosition,
   setWidgetPosition,
   ENV_URLS,

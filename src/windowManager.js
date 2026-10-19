@@ -1,34 +1,28 @@
 // windowManager.js — creates the single BrowserWindow that hosts the real
-// portal-ui Record Meeting page. This is a thin native shell: no renderer
+// portal-ui pages (MyGenie Notes by default, Record Meeting from the tray). This is a thin native shell: no renderer
 // code of ours runs inside the window, only Electron-side wiring around it
 // (permissions, navigation lock-down, close-to-tray).
 const { BrowserWindow, session, shell, app } = require("electron");
 const path = require("path");
-const { getBaseUrl, getRecordMeetingUrl, RECORD_MEETING_PATH } = require("./config");
+const { getRecordMeetingUrl, getNotesUrl, RECORD_MEETING_PATH } = require("./config");
+const { installCaptureHandlers, supportsSystemAudio, isOwnOrigin } = require("./capture");
 
 const SESSION_PARTITION = "persist:saathi-desktop";
 
 let mainWindow = null;
 
-function isAllowedOrigin(url) {
-  try {
-    return new URL(url).origin === new URL(getBaseUrl()).origin;
-  } catch {
-    return false;
-  }
-}
+// Same-environment check shared with capture.js (includes old hostnames
+// that redirect to the canonical one, e.g. data.mygenieprojects.com).
+const isAllowedOrigin = isOwnOrigin;
 
 function createMainWindow({ startHidden } = {}) {
   const ses = session.fromPartition(SESSION_PARTITION);
 
-  // getUserMedia and Notification are both denied by default in Electron
-  // (unlike a real browser, which prompts) — without these handlers,
-  // recording and the pre-meeting desktop notification both fail silently.
-  const isAllowedPermission = (permission) => permission === "media" || permission === "notifications";
-  ses.setPermissionRequestHandler((_wc, permission, callback) => {
-    callback(isAllowedPermission(permission));
-  });
-  ses.setPermissionCheckHandler((_wc, permission) => isAllowedPermission(permission));
+  // getUserMedia, getDisplayMedia and Notification are all denied by
+  // default in Electron (unlike a real browser, which prompts) — capture.js
+  // grants them for our own portal origin only, and answers getDisplayMedia
+  // with system-audio loopback instead of a picker.
+  installCaptureHandlers(ses);
 
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -37,7 +31,7 @@ function createMainWindow({ startHidden } = {}) {
     minHeight: 640,
     show: false,
     autoHideMenuBar: true,
-    icon: path.join(__dirname, "../build/icon.ico"),
+    // Windows uses the exe's embedded icon; macOS uses the bundle icon.
     webPreferences: {
       session: ses,
       preload: path.join(__dirname, "preload.js"),
@@ -47,6 +41,7 @@ function createMainWindow({ startHidden } = {}) {
       // Keep the hardened background upload-retry queue running at full
       // speed even while the window is hidden in the tray.
       backgroundThrottling: false,
+      additionalArguments: supportsSystemAudio() ? ["--saathi-system-audio=1"] : [],
     },
   });
 
@@ -99,9 +94,23 @@ function createMainWindow({ startHidden } = {}) {
     mainWindow = null;
   });
 
-  mainWindow.loadURL(getRecordMeetingUrl());
+  mainWindow.loadURL(getNotesUrl());
 
   return mainWindow;
+}
+
+function openPage(url) {
+  if (!mainWindow) return;
+  mainWindow.loadURL(url);
+  showMainWindow();
+}
+
+function openNotes() {
+  openPage(getNotesUrl());
+}
+
+function openRecordMeeting() {
+  openPage(getRecordMeetingUrl());
 }
 
 function getMainWindow() {
@@ -114,4 +123,4 @@ function showMainWindow() {
   mainWindow.focus();
 }
 
-module.exports = { createMainWindow, getMainWindow, showMainWindow };
+module.exports = { createMainWindow, getMainWindow, showMainWindow, openNotes, openRecordMeeting };
