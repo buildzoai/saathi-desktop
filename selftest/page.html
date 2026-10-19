@@ -1,0 +1,43 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>selftest</title>
+<script>
+(async () => {
+  const r = { audioTracks: 0, videoTracks: 0, peak: 0 };
+  try {
+    const t0 = performance.now();
+    // Exactly what the Notes recorder asks for.
+    const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+    r.pickerFreeMs = Math.round(performance.now() - t0);
+    r.videoTracks = stream.getVideoTracks().length;
+    r.audioTracks = stream.getAudioTracks().length;
+    stream.getVideoTracks().forEach((t) => t.stop()); // the recorder drops video too
+    if (r.audioTracks) {
+      const track = stream.getAudioTracks()[0];
+      r.audioLabel = track.label;
+      r.audioSettings = track.getSettings();
+      const ctx = new AudioContext();
+      // Something for the loopback to hear: a quiet 440 Hz tone for ~1.5 s.
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      gain.gain.value = 0.05;
+      osc.connect(gain).connect(ctx.destination);
+      osc.start();
+      const analyser = ctx.createAnalyser();
+      ctx.createMediaStreamSource(new MediaStream([track])).connect(analyser);
+      const buf = new Float32Array(analyser.fftSize);
+      const until = performance.now() + 1500;
+      while (performance.now() < until) {
+        analyser.getFloatTimeDomainData(buf);
+        for (const v of buf) r.peak = Math.max(r.peak, Math.abs(v));
+        await new Promise((res) => setTimeout(res, 50));
+      }
+      osc.stop();
+      track.stop();
+    }
+  } catch (e) {
+    r.error = `${e.name}: ${e.message}`;
+  }
+  window.selftest.report(r);
+})();
+</script>
