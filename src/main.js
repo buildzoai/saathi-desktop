@@ -1,6 +1,11 @@
 // main.js — app lifecycle entry point. Wires window, tray, and auto-update
 // together; everything else lives in its own small module.
-const { app, ipcMain } = require("electron");
+const { app, dialog, ipcMain, powerSaveBlocker } = require("electron");
+
+// While a meeting records: keep the Mac from idle-sleeping (closing the lid
+// still sleeps it; macOS allows no app to stop that), and ask before quitting.
+let recordingStatus = "stopped";
+let sleepBlocker = null;
 const { getPermissionStatuses, requestMicrophoneAccess, openPrivacySettings, isOwnOrigin } = require("./capture");
 const { createMainWindow, showMainWindow } = require("./windowManager");
 const { createTray } = require("./tray");
@@ -52,6 +57,13 @@ if (!gotLock) {
     );
 
     ipcMain.on("recording-status", (_event, { status, elapsedMs }) => {
+      recordingStatus = status;
+      if (status === "recording" && sleepBlocker == null) {
+        sleepBlocker = powerSaveBlocker.start("prevent-app-suspension");
+      } else if (status !== "recording" && sleepBlocker != null) {
+        powerSaveBlocker.stop(sleepBlocker);
+        sleepBlocker = null;
+      }
       if (status === "recording" || status === "paused") {
         showWidget(() => showMainWindow());
         updateWidgetStatus(status, elapsedMs);
@@ -72,7 +84,20 @@ if (!gotLock) {
   app.on("activate", () => showMainWindow());
 
   // macOS: Cmd+Q / Dock "Quit" must really quit, not hide to the menu bar.
-  app.on("before-quit", () => {
+  app.on("before-quit", (event) => {
+    // Every quit path (Cmd+Q, Dock, tray Quit, update restart) lands here.
+    if (!app.recordingQuitOk && (recordingStatus === "recording" || recordingStatus === "paused")) {
+      const choice = dialog.showMessageBoxSync({
+        type: "warning",
+        buttons: ["Keep recording", "Quit anyway"],
+        defaultId: 0,
+        cancelId: 0,
+        message: "A meeting is still recording.",
+        detail: "Quitting stops the recording. What was recorded so far is kept. Stop it from the note first to have it written up now.",
+      });
+      if (choice === 0) { event.preventDefault(); app.isQuitting = false; return; }
+      app.recordingQuitOk = true;
+    }
     app.isQuitting = true;
   });
 }
