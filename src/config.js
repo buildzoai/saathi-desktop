@@ -7,7 +7,7 @@ const fs = require("fs");
 const path = require("path");
 const { app } = require("electron");
 
-// The dev box hosts SIX independent slots (dev, dev1..dev5), each a separate
+// The dev box hosts independent slots (dev, dev1..dev9), each a separate
 // checkout + backend + database, so "the dev server" is never one thing —
 // whichever slot your branch is deployed to is the one you need to point at.
 // Listing them all beats editing this file every time a branch moves slots.
@@ -20,6 +20,8 @@ const ENV_URLS = {
   dev3: "https://dev3.buildzo.ai",
   dev4: "https://dev4.buildzo.ai",
   dev5: "https://dev5.buildzo.ai",
+  // dev9: the canvas UI, where MyGenie Notes is deployed for testing.
+  dev9: "https://dev9.buildzo.ai",
   local: "http://localhost:8080",
 };
 
@@ -37,6 +39,7 @@ const ENV_LABELS = {
   dev3: "Development (dev3)",
   dev4: "Development (dev4)",
   dev5: "Development (dev5)",
+  dev9: "Development (dev9 · Notes)",
   local: "Local (localhost:8080)",
 };
 
